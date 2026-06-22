@@ -1,0 +1,129 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<script>
+// Антикэш-загрузка: при новой сборке страница сама открывается с новым параметром версии.
+// Это не очищает кэш всего браузера, но заставляет браузер брать актуальную HTML-страницу.
+(function(){
+  const BUILD_ID = 'v20.9';
+  try {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).catch(()=>{});
+    }
+  } catch(_) {}
+  try {
+    const url = new URL(window.location.href);
+    const current = url.searchParams.get('v');
+    if (current !== BUILD_ID) {
+      url.searchParams.set('v', BUILD_ID);
+      window.location.replace(url.toString());
+    }
+    window.addEventListener('pageshow', function(ev){
+      if (ev.persisted) window.location.reload();
+    });
+  } catch(_) {}
+})();
+</script>
+<title>Runology Engine v20.9 — Final Clean Build</title>
+
+<link rel="stylesheet" href="styles/styles.css" />
+
+</head>
+
+<body>
+  <div id="mobile-bar">
+    <div class="mobile-title">ᚱ Runology Engine v20.9</div>
+    <div class="mobile-actions">
+      <button id="mobile-library-toggle" onclick="engine.toggleMobilePanel('library')">📚 Руны</button>
+      <button id="mobile-console-toggle" onclick="engine.toggleMobilePanel('console')">📟 Лог</button>
+      <button id="mobile-connect-toggle" onclick="engine.toggleConnectMode()">🔗 Связь</button>
+    </div>
+  </div>
+  <div id="sidebar">
+    <div class="sidebar-header">📜 Библиотека рун</div>
+    <div class="sidebar-subheader">
+      Сигналы: <b style="color:#22d3ee">1 = DATA</b>,
+      <b style="color:#a78bfa">2 = слабый</b>,
+      <b style="color:#ef4444">3 = сильный</b>
+    </div>
+    <div id="runeList"></div>
+    <div class="legend">
+      <b>Правила:</b><br>
+      — эффекторы, счётчики и мощные руны принимают только <span class="badge">3</span><br>
+      — операторы выдают <span class="badge">1</span>, значения передают его только после входного сигнала<br>
+      — мостик обязателен между блоками, базовая задержка мостика 10 мс<br>
+      — мостик к сабруне считается крепёжным и идёт с задержкой 5 мс
+    </div>
+  </div>
+
+  <div id="workspace">
+    <div id="top-controls">
+      <button onclick="engine.clear()">🗑 Очистить</button>
+      <button onclick="engine.toggleDeleteMode()" id="btnDelete">✖ Удалить</button>
+      <button onclick="engine.toggleConnectMode()" id="btnConnectMode">🔗 Связь</button>
+      <button onclick="engine.stepSimulation()">⏭ STEP</button>
+      <button onclick="engine.run()">▶ RUN</button>
+      <button onclick="engine.stop()">⏹ STOP</button>
+      <button onclick="engine.buildTimerDemo()">⏱ Таймер</button>
+      <button onclick="engine.buildSignalDemo()">🔬 Демо</button>
+      <button onclick="engine.buildCircleColorDemo()">🎨 Демо круг</button>
+      <button onclick="engine.buildPhytoDemo()">🌿 Фитолампы</button>
+    </div>
+
+    <div id="stats-panel">
+      <div class="stats-row"><span>Симуляционное время</span><span id="statTime">0 мс</span></div>
+      <div class="stats-row"><span>Очередь событий</span><span id="statQueue">0</span></div>
+      <div class="stats-row"><span>Первый максимум задержки</span><span id="statDelay">0 мс</span></div>
+      <div class="stats-row"><span>Обработано событий</span><span id="statProcessed">0</span></div>
+      <div class="stats-row"><span>Режим</span><span id="statMode">idle</span></div>
+      <div class="stats-row"><span>Источники в работе</span><span id="statSources">0</span></div>
+      <div class="stats-row"><span>Масштаб</span><span id="statZoom">100%</span></div>
+    </div>
+
+    <canvas id="main"></canvas>
+  </div>
+
+  <div id="console-panel">
+    <div class="console-header">
+      <span>📟 Терминал эффектов</span>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button type="button" style="padding:6px 8px; min-height:0; font-size:11px;" onclick="document.getElementById('consoleContent').innerHTML=''">Очистить</button>
+        <button type="button" style="padding:6px 8px; min-height:0; font-size:11px;" onclick="engine.toggleMobilePanel('console')">✕</button>
+      </div>
+    </div>
+    <div class="console-content" id="consoleContent"></div>
+  </div>
+
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <h3>Настройки узла / мостика</h3>
+      <label id="modalValueLabel" for="modalValue">Значение / константа</label>
+      <input id="modalValue" type="text" />
+      <label for="modalDelay">Задержка (мс)</label>
+      <input id="modalDelay" type="number" min="0" />
+      <div class="modal-buttons">
+        <button onclick="closeModal()">Отмена</button>
+        <button onclick="saveModalSettings()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tooltip" class="tooltip"></div>
+
+  <div id="quickConnectPortPopup">
+    <div class="qcp-head">Выбор порта</div>
+    <div class="qcp-body"></div>
+    <div class="qcp-foot"><button class="qcp-cancel" type="button">Отмена</button></div>
+  </div>
+
+<script type="module" src="js/main.js"></script>
+
+
+</body>
+</html>
